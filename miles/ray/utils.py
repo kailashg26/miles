@@ -29,6 +29,20 @@ def ray_noset_visible_devices(env_vars=os.environ):
     return any(env_vars.get(env_var) for env_var in NOSET_VISIBLE_DEVICES_ENV_VARS_LIST)
 
 
+def rocm_ray_runtime_env_vars() -> dict[str, str]:
+    """Extra Ray worker env on ROCm to avoid teardown SIGSEGV in TaskEventBuffer.
+
+    On actor kill (end of job / ``ray stop``), Ray may flush task events after the
+    GCS client is gone, crashing in ``TaskInfoAccessor::AsyncAddTaskEventData``.
+    Disabling task events avoids that flush path (see ray-project/ray#51527).
+    """
+    if getattr(torch.version, "hip", None) is None:
+        return {}
+    return {
+        "RAY_enable_task_events": "0",
+    }
+
+
 def get_physical_gpu_id():
     device = torch.cuda.current_device()
     props = torch.cuda.get_device_properties(device)

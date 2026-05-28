@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from enum import StrEnum
+from miles.utils.enum_compat import StrEnum
 from pathlib import Path
 from typing import Any
 

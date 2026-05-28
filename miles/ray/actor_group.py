@@ -5,7 +5,7 @@ import ray
 from ray.util.placement_group import PlacementGroup
 from ray.util.scheduling_strategies import PlacementGroupSchedulingStrategy
 
-from miles.ray.utils import NOSET_VISIBLE_DEVICES_ENV_VARS_LIST
+from miles.ray.utils import NOSET_VISIBLE_DEVICES_ENV_VARS_LIST, rocm_ray_runtime_env_vars
 
 
 class RayTrainGroup:
@@ -56,6 +56,7 @@ class RayTrainGroup:
             "NVTE_FP8_BLOCK_SCALING_FP32_SCALES": "1",
             **{name: "1" for name in NOSET_VISIBLE_DEVICES_ENV_VARS_LIST},
             **self.args.train_env_vars,
+            **rocm_ray_runtime_env_vars(),
         }
 
         if source_patcher_config := self.args.dumper_source_patcher_config_train:

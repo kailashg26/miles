@@ -1,8 +1,12 @@
 import os
 
+import torch
 from tests.ci.ci_register import register_cuda_ci
 
 import miles.utils.external_utils.command_utils as U
+from miles.ray.utils import rocm_ray_runtime_env_vars
+
+IS_ROCM = getattr(torch.version, "hip", None) is not None
 
 register_cuda_ci(est_time=6000, suite="stage-c-2-gpu-h200", labels=["long"])
 
@@ -81,6 +85,8 @@ def execute():
     ci_args = (
         "--ci-test "
         "--ci-disable-kl-checker "
+        # ROCm (gfx950): unfused wgrad path has ~1e-9 logprob drift; see PR #1159.
+        f"{'--ci-disable-logprobs-checker ' if IS_ROCM else ''}"
         "--ci-metric-checker-key eval/gsm8k "
         "--ci-metric-checker-threshold 0.55 "  # loose threshold at 250 step
     )
@@ -92,6 +98,8 @@ def execute():
         # should be good for model performance
         "--accumulate-allreduce-grads-in-fp32 "
         "--attention-softmax-in-fp32 "
+        # ROCm gfx950: hipBLASLt BGRADB fused wgrad gap; see PR #1159.
+        f"{'--no-gradient-accumulation-fusion ' if IS_ROCM else ''}"
         # need to comment this when using model with MLA
         "--attention-backend flash "
         "--actor-num-nodes 1 "
@@ -117,7 +125,10 @@ def execute():
         train_args=train_args,
         num_gpus_per_node=NUM_GPUS,
         megatron_model_type=MODEL_TYPE,
-        extra_env_vars={"MILES_EXPERIMENTAL_ROLLOUT_REFACTOR": "1"},
+        extra_env_vars={
+            "MILES_EXPERIMENTAL_ROLLOUT_REFACTOR": "1",
+            **rocm_ray_runtime_env_vars(),
+        },
     )
 
 

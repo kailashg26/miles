@@ -46,7 +46,7 @@ from miles.utils.tracking_utils import init_tracking
 from miles.utils.types import Sample
 
 from ..utils.metric_utils import has_repetition
-from .utils import NOSET_VISIBLE_DEVICES_ENV_VARS_LIST, Lock
+from .utils import NOSET_VISIBLE_DEVICES_ENV_VARS_LIST, Lock, rocm_ray_runtime_env_vars
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -143,6 +143,7 @@ class ServerGroup:
                 }.items()
             }
             env_vars.update(dumper_utils.get_sglang_env(self.args))
+            env_vars.update(rocm_ray_runtime_env_vars())
 
             rollout_engine = RolloutRayActor.options(
                 num_cpus=num_cpus,
@@ -374,7 +375,11 @@ class RolloutManager:
             init_http_client(args)
             self.servers = start_rollout_servers(args, pg)
             _start_session_server(args)
-        self.rollout_engine_lock = Lock.options(num_cpus=1, num_gpus=0).remote()
+        self.rollout_engine_lock = Lock.options(
+            num_cpus=1,
+            num_gpus=0,
+            runtime_env={"env_vars": rocm_ray_runtime_env_vars()},
+        ).remote()
         self.rollout_id = -1
 
         self._metric_checker = MetricChecker.maybe_create(args)

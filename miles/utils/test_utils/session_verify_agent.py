@@ -11,7 +11,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-from enum import Enum, StrEnum
+from enum import Enum
+
+from miles.utils.enum_compat import StrEnum
 
 import httpx
 
