@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 
 import ray
 
@@ -191,14 +192,22 @@ class RolloutManager:
         """Return engines eligible for weight updates."""
         srv = self._get_updatable_server()
         if not srv:
-            return [], self.rollout_engine_lock, False, [], []
+            return EnginesAndLock(
+                rollout_engines=[],
+                rollout_engine_lock=self.rollout_engine_lock,
+                has_new_engines=False,
+                engine_gpu_counts=[],
+                engine_gpu_offsets=[],
+            )
 
         await srv.wait_all_engines_alive()
-        engines = [e.actor_handle for e in srv.engines]
-        gpu_counts = srv.engine_gpu_counts
-        gpu_offsets = srv.engine_gpu_offsets
-        has_new = srv.has_new_engines
-        return engines, self.rollout_engine_lock, has_new, gpu_counts, gpu_offsets
+        return EnginesAndLock(
+            rollout_engines=[e.actor_handle for e in srv.engines],
+            rollout_engine_lock=self.rollout_engine_lock,
+            has_new_engines=srv.has_new_engines,
+            engine_gpu_counts=srv.engine_gpu_counts,
+            engine_gpu_offsets=srv.engine_gpu_offsets,
+        )
 
     def clear_updatable_has_new_engines(self):
         # when fault tolerance is not enabled, we need to manually clear has_new_engines after update_weights
@@ -297,3 +306,12 @@ class RolloutManager:
                 time.sleep(wait_time)
             except Exception as e:
                 logger.warning(f"CI Fault Injection failed: {e}")
+
+
+@dataclass(frozen=True)
+class EnginesAndLock:
+    rollout_engines: list[ray.actor.ActorHandle]
+    rollout_engine_lock: ray.actor.ActorHandle
+    has_new_engines: bool
+    engine_gpu_counts: list[int]
+    engine_gpu_offsets: list[int]

@@ -2,6 +2,7 @@ import logging
 import os
 import random
 from argparse import Namespace
+from typing import TYPE_CHECKING
 
 import ray
 import torch
@@ -34,6 +35,9 @@ from . import checkpoint
 from .lr_scheduler import get_lr_scheduler
 from .parallel import create_fsdp_parallel_state
 from .update_weight_utils import UpdateWeightFromDistributed, UpdateWeightFromTensor
+
+if TYPE_CHECKING:
+    from miles.ray.rollout.rollout_manager import EnginesAndLock
 
 logger = logging.getLogger(__name__)
 
@@ -552,9 +556,14 @@ class FSDPTrainRayActor(TrainRayActor):
         if self.args.debug_train_only or self.args.debug_rollout_only:
             return
 
-        rollout_engines, rollout_engine_lock, has_new_engines, engine_gpu_counts, engine_gpu_offsets = ray.get(
-            self.rollout_manager.get_updatable_engines_and_lock.remote()
-        )
+        info: EnginesAndLock = ray.get(self.rollout_manager.get_updatable_engines_and_lock.remote())
+        rollout_engines = info.rollout_engines
+        rollout_engine_lock = info.rollout_engine_lock
+        has_new_engines = info.has_new_engines
+        engine_gpu_counts = info.engine_gpu_counts
+        engine_gpu_offsets = info.engine_gpu_offsets
+        del info
+
         if has_new_engines:
             self.weight_updater.connect_rollout_engines(
                 rollout_engines,

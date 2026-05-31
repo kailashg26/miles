@@ -3,6 +3,7 @@ import random
 import socket
 from argparse import Namespace
 from contextlib import nullcontext
+from typing import TYPE_CHECKING
 
 import ray
 import torch
@@ -41,6 +42,9 @@ from .update_weight.common import named_params_and_buffers
 from .update_weight.update_weight_from_distributed.broadcast import UpdateWeightFromDistributed
 from .update_weight.update_weight_from_distributed.p2p import UpdateWeightP2P
 from .update_weight.update_weight_from_tensor import UpdateWeightFromTensor
+
+if TYPE_CHECKING:
+    from miles.ray.rollout.rollout_manager import EnginesAndLock
 
 logging.getLogger("megatron").setLevel(logging.WARNING)
 
@@ -515,9 +519,13 @@ class MegatronTrainRayActor(TrainRayActor):
                 ray.get(self.rollout_manager.recover_updatable_engines.remote())
             dist.barrier(group=get_gloo_group())
 
-        rollout_engines, rollout_engine_lock, has_new_engines, engine_gpu_counts, engine_gpu_offsets = ray.get(
-            self.rollout_manager.get_updatable_engines_and_lock.remote()
-        )
+        info: EnginesAndLock = ray.get(self.rollout_manager.get_updatable_engines_and_lock.remote())
+        rollout_engines = info.rollout_engines
+        rollout_engine_lock = info.rollout_engine_lock
+        has_new_engines = info.has_new_engines
+        engine_gpu_counts = info.engine_gpu_counts
+        engine_gpu_offsets = info.engine_gpu_offsets
+        del info
 
         if self.args.offload_train:
             reload_process_groups()
