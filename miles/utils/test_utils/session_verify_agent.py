@@ -11,12 +11,13 @@ from __future__ import annotations
 import json
 import logging
 import os
-from enum import Enum, StrEnum
+from enum import Enum
 
 import httpx
 
 from miles.rollout.base_types import GenerateFnInput, GenerateFnOutput
 from miles.rollout.generate_hub.agentic_tool_call import generate as _base_generate
+from miles.utils.enum_compat import StrEnum
 
 logger = logging.getLogger(__name__)
 

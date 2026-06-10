@@ -1,3 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+cd "${REPO_ROOT}"
+
 export GITHUB_WORKSPACE=$PWD
 export PYTHONPATH=$PWD
 
@@ -21,4 +28,3 @@ ray stop --force >/dev/null 2>&1 || true
 sleep 2
 
 python tests/e2e/megatron/test_qwen3_30B_A3B/test_deepep_fp8.py
-
